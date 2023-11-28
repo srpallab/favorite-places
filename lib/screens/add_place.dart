@@ -4,8 +4,10 @@ import 'dart:io';
 
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/providers/place_provider.dart';
+import 'package:favorite_places/screens/map.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:location/location.dart';
@@ -46,6 +48,24 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
     }
   }
 
+  Future<void> _setLocation(double lat, double lon) async {
+    final url = Uri.parse(
+      "https://maps.googleapis.com/maps/api/geocode/json?latlng="
+      "$lat,$lon&"
+      "key=AIzaSyDIFJJr_XlU-aHVVR6VdBW-R1vo1z8K50M",
+    );
+    log(url.toString());
+    final response = await http.get(url);
+    final resData = json.decode(response.body);
+    final address = resData["results"][0]['formatted_address'];
+
+    setState(() {
+      _pickedLocation =
+          PlaceLocation(latitude: lat, longitude: lon, address: address);
+      _isGettingLocation = false;
+    });
+  }
+
   Future<void> _getCurrentLocation() async {
     setState(() {
       _isGettingLocation = true;
@@ -74,30 +94,16 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
     log(locationData.latitude.toString());
     log(locationData.longitude.toString());
 
-    final url = Uri.parse(
-      "https://maps.googleapis.com/maps/api/geocode/json?latlng="
-      "${locationData.latitude},${locationData.longitude}&"
-      "key=AIzaSyDIFJJr_XlU-aHVVR6VdBW-R1vo1z8K50M",
-    );
-    log(url.toString());
-    final response = await http.get(url);
-    final resData = json.decode(response.body);
-    final address = resData["results"][0]['formatted_address'];
+    if (locationData.latitude == null || locationData.longitude == null) return;
 
-    if (locationData.latitude == null ||
-        locationData.longitude == null ||
-        address.isEmpty) {
-      return;
-    }
+    _setLocation(locationData.latitude!, locationData.longitude!);
+  }
 
-    setState(() {
-      _pickedLocation = PlaceLocation(
-        latitude: locationData.latitude!,
-        longitude: locationData.longitude!,
-        address: address,
-      );
-      _isGettingLocation = false;
-    });
+  _getLocationFromMap() async {
+    final pickedLocation = await Navigator.of(context)
+        .push<LatLng>(MaterialPageRoute(builder: (ctx) => const MapScreen()));
+    if (pickedLocation == null) return;
+    _setLocation(pickedLocation.latitude, pickedLocation.longitude);
   }
 
   void _addLocation() {
@@ -184,7 +190,7 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
                             label: const Text("Get Current Location"),
                           ),
                     TextButton.icon(
-                      onPressed: () {},
+                      onPressed: _getLocationFromMap,
                       icon: const Icon(Icons.map),
                       label: const Text("Select on Map"),
                     ),

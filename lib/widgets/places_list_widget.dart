@@ -1,3 +1,4 @@
+import 'package:favorite_places/screens/place_details.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,7 +17,14 @@ class PlacesList extends ConsumerWidget {
         return Padding(
           padding: const EdgeInsets.all(8.0),
           child: ListTile(
-            leading: Image.file(placeList[index].image),
+            onTap: () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (ctx) {
+                return PlaceDetailsScreen(place: placeList[index]);
+              }));
+            },
+            leading: CircleAvatar(
+              backgroundImage: FileImage(placeList[index].image),
+            ),
             title: Text(
               placeList[index].title,
               style: Theme.of(context).textTheme.titleMedium!.copyWith(
